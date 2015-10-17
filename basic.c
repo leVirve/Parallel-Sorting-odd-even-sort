@@ -16,13 +16,15 @@
 #define INFO(args...)
 #endif
 
-#define bool  char
-#define true  1
-#define false 0
+#define bool        char
+#define true        1
+#define false       0
 #define MICRO_SEC   1000000
-#define is_odd(x) ((x) % 2)
-#define is_even(x) (!is_odd(x))
-#define swap(i, j) int t = i; i = j; j = t;
+#define channel1    0
+#define channel2    1
+#define is_odd(x)   ((x) % 2)
+#define is_even(x)  (!is_odd(x))
+#define swap(i, j)  int t = i; i = j; j = t;
 #define time_diff(x) \
             x.tv_sec - start.tv_sec + \
             (double)(x.tv_usec - start.tv_usec) / MICRO_SEC
@@ -124,13 +126,13 @@ bool _recv(int rank, int* nums)
     int recv, send;
     bool sorted = true;
     MPI_Status status;
-    MPI_Recv(&recv, 1, MPI_INT, rank, 0, MPI_COMM_WORLD, &status);
+    MPI_Recv(&recv, 1, MPI_INT, rank, channel1, MPI_COMM_WORLD, &status);
     if (recv > nums[0]) {
         send = nums[0];
         nums[0] = recv;
         sorted = false;
     } else send = recv;
-    MPI_Send(&send, 1, MPI_INT, rank, 1, MPI_COMM_WORLD);
+    MPI_Send(&send, 1, MPI_INT, rank, channel2, MPI_COMM_WORLD);
     DEBUG("#%d(@%d) recv: %d, send: %d\n", rank + 1, ccc, recv, send);
     return sorted;
 }
@@ -141,8 +143,8 @@ void _send(int rank, int* nums, int count)
 
     int send = nums[count - 1], recv;
     MPI_Status status;
-    MPI_Send(&send, 1, MPI_INT, rank, 0, MPI_COMM_WORLD);
-    MPI_Recv(&recv, 1, MPI_INT, rank, 1, MPI_COMM_WORLD, &status);
+    MPI_Send(&send, 1, MPI_INT, rank, channel1, MPI_COMM_WORLD);
+    MPI_Recv(&recv, 1, MPI_INT, rank, channel2, MPI_COMM_WORLD, &status);
     nums[count - 1] = recv;
     DEBUG("#%d(@%d) send: %d, recv: %d\n", rank - 1, ccc, send, recv);
 }
@@ -168,19 +170,12 @@ int main(int argc, char** argv)
     bool p_sorted = false;
     while (!p_sorted) {
 
-#ifdef _INFO
-        /* Pass ccc > 4 */
-        // if (ccc > 6) break;
-#endif
-
         p_sorted = true;
 
         if (world_size <= 1) {
             odd_even_sort(nums, count);
             break;
         }
-
-        // if (ccc > 5) break;
 
         // even-phase
         if (is_odd(subset_size)) {
