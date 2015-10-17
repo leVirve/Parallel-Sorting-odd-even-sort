@@ -124,13 +124,13 @@ bool _recv(int rank, int* nums)
     int recv, send;
     bool sorted = true;
     MPI_Status status;
-    MPI_Recv(&recv, 1, MPI_INT, rank, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+    MPI_Recv(&recv, 1, MPI_INT, rank, 0, MPI_COMM_WORLD, &status);
     if (recv > nums[0]) {
         send = nums[0];
         nums[0] = recv;
         sorted = false;
     } else send = recv;
-    MPI_Send(&send, 1, MPI_INT, rank, 0, MPI_COMM_WORLD);
+    MPI_Send(&send, 1, MPI_INT, rank, 1, MPI_COMM_WORLD);
     DEBUG("#%d(@%d) recv: %d, send: %d\n", rank + 1, ccc, recv, send);
     return sorted;
 }
@@ -142,16 +142,18 @@ void _send(int rank, int* nums, int count)
     int send = nums[count - 1], recv;
     MPI_Status status;
     MPI_Send(&send, 1, MPI_INT, rank, 0, MPI_COMM_WORLD);
-    MPI_Recv(&recv, 1, MPI_INT, rank, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+    MPI_Recv(&recv, 1, MPI_INT, rank, 1, MPI_COMM_WORLD, &status);
     nums[count - 1] = recv;
     DEBUG("#%d(@%d) send: %d, recv: %d\n", rank - 1, ccc, send, recv);
 }
 
 int main(int argc, char** argv)
 {
+    struct timeval start;
     int file_size, subset_size;
 
     MPI_Init(&argc, &argv);
+    gettimeofday(&start, NULL);
 
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
@@ -165,12 +167,20 @@ int main(int argc, char** argv)
 
     bool p_sorted = false;
     while (!p_sorted) {
+
+#ifdef _INFO
+        /* Pass ccc > 4 */
+        // if (ccc > 6) break;
+#endif
+
         p_sorted = true;
 
         if (world_size <= 1) {
             odd_even_sort(nums, count);
             break;
         }
+
+        // if (ccc > 5) break;
 
         // even-phase
         if (is_odd(subset_size)) {
@@ -180,7 +190,7 @@ int main(int argc, char** argv)
                 _send(world_rank + 1, nums, count);
         }
         p_sorted &= _single_phase_sort(nums, 0, count);
-        INFO("#%dcount: %d even-phase\n", world_rank, ccc);
+        INFO("#%d: %d even-phase\n", world_rank, ccc);
         MPI_Barrier(MPI_COMM_WORLD);
 
         // odd-phase
@@ -196,7 +206,7 @@ int main(int argc, char** argv)
                 p_sorted = _recv(world_rank - 1, nums);
         }
         p_sorted &= _single_phase_sort(nums, 1, count);
-        INFO("#%dcount: %d odd-phase\n", world_rank, ccc++);
+        INFO("#%d: %d odd-phase\n", world_rank, ccc++);
         MPI_Barrier(MPI_COMM_WORLD);
 
         bool tmp;
@@ -210,6 +220,6 @@ int main(int argc, char** argv)
 
     MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
-    INFO("End\n");
+    dump_status(world_rank);
     return 0;
 }
