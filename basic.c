@@ -75,47 +75,40 @@ int mpi_read_file(
     return count;
 }
 
-void dump_result(
+void mpi_write_file(
     char* filename, int* nums,
-    int subset_size)
+    int count)
 {
     MPI_File fh;
     MPI_Status status;
 
     MPI_File_open(MPI_COMM_WORLD, filename, \
-                  MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &fh);
-    MPI_File_set_view(fh, sizeof(int) * subset_size * world_rank, \
+                  MPI_MODE_RDWR | MPI_MODE_CREATE, MPI_INFO_NULL, &fh);
+    MPI_File_set_view(fh, sizeof(int) * count * world_rank, \
                       MPI_INT, MPI_INT, "native", MPI_INFO_NULL);
-    MPI_File_write_all(fh, nums, subset_size, MPI_INT, &status);
+    MPI_File_write_all(fh, nums, count, MPI_INT, &status);
     MPI_File_close(&fh);
 }
 
 void odd_even_sort(int* a, int size)
 {
+    int i;
     bool sorted = false;
     while (!sorted) {
         sorted = true;
-        for (int i = 1; i < size - 1; i += 2)
-            if (a[i] > a[i + 1]) {
-                swap(a[i], a[i + 1]);
-                sorted = false;
-            }
-        for (int i = 0; i < size - 1; i += 2)
-            if (a[i] > a[i + 1]) {
-                swap(a[i], a[i + 1]);
-                sorted = false;
-            }
+        for (i = 1; i < size - 1; i += 2)
+            if (a[i] > a[i + 1]) { swap(a[i], a[i + 1]); sorted = false; }
+        for (i = 0; i < size - 1; i += 2)
+            if (a[i] > a[i + 1]) { swap(a[i], a[i + 1]); sorted = false; }
     }
 }
 
 bool _single_phase_sort(int* a, int index, int size)
 {
+    int i = index;
     bool sorted = true;
-    for (int i = index; i < size - 1; i += 2)
-        if (a[i] > a[i + 1]) {
-            swap(a[i], a[i + 1]);
-            sorted = false;
-        }
+    for (; i < size - 1; i += 2)
+        if (a[i] > a[i + 1]) { swap(a[i], a[i + 1]); sorted = false; }
     return sorted;
 }
 
@@ -153,29 +146,34 @@ int main(int argc, char** argv)
 {
     struct timeval start;
     int file_size, subset_size;
+    sscanf(argv[1], "%d", &file_size);
 
     MPI_Init(&argc, &argv);
     gettimeofday(&start, NULL);
 
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+    /** For data size is less then proccessors **/
+    if (file_size < world_size) world_size = 1;
 
-    sscanf(argv[1], "%d", &file_size);
     subset_size = file_size / world_size;
     if (file_size % world_size) subset_size += 1;
 
-    int *nums = (int*) malloc(subset_size * sizeof(int)), count;
-    count = mpi_read_file(argv[2], nums, subset_size);
+
+    int *nums = (int*) malloc(subset_size * sizeof(int));
+    int count = mpi_read_file(argv[2], nums, subset_size);
+
+    DEBUG("#%d/%d count=%d\n", world_rank, world_size, count);
 
     bool p_sorted = false;
-    while (!p_sorted) {
 
+    if (world_size <= 1) {
+        odd_even_sort(nums, count);
         p_sorted = true;
+    }
 
-        if (world_size <= 1) {
-            odd_even_sort(nums, count);
-            break;
-        }
+    while (!p_sorted) {
+        p_sorted = true;
 
         // even-phase
         if (is_odd(subset_size)) {
@@ -207,14 +205,16 @@ int main(int argc, char** argv)
         bool tmp;
         MPI_Allreduce(&p_sorted, &tmp, 1, MPI_CHAR, MPI_LAND, MPI_COMM_WORLD);
         p_sorted = tmp;
-
-        DEBUG("#%d in %c\n", world_rank, p_sorted ? 'T' : 'F');
     }
 
-    dump_result(argv[3], nums, subset_size);
+    mpi_write_file(argv[3], nums, count);
+    DEBUG("#%d leave sorting-loop(%d)\n", world_rank, count);
 
     MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
     dump_status(world_rank);
+
+    free(nums);
+
     return 0;
 }
