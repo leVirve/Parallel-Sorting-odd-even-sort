@@ -22,6 +22,9 @@
 #define MICRO_SEC   1000000
 #define channel1    0
 #define channel2    1
+#define EVEN_PHASE  0
+#define ODD_PHASE   1
+
 #define is_odd(x)   ((x) % 2)
 #define is_even(x)  (!is_odd(x))
 #define swap(i, j)  int t = i; i = j; j = t;
@@ -34,7 +37,7 @@
             INFO("Worker#%d @(time: %.12f)\n", jid, time_diff(timestamp)); \
             fflush(stdout);
 
-int ccc = 0;
+bool sorted = false;
 int world_size, world_rank;
 double start_t, end_t;
 
@@ -103,21 +106,18 @@ void odd_even_sort(int* a, int size)
     }
 }
 
-bool _single_phase_sort(int* a, int index, int size)
+void _single_phase_sort(int* a, int index, int size)
 {
     int i = index;
-    bool sorted = true;
     for (; i < size - 1; i += 2)
         if (a[i] > a[i + 1]) { swap(a[i], a[i + 1]); sorted = false; }
-    return sorted;
 }
 
-bool _recv(int rank, int* nums)
+void mpi_recv(int rank, int* nums)
 {
-    if (rank < 0) return true;
+    if (rank < 0) return;
 
     int recv, send;
-    bool sorted = true;
     MPI_Status status;
     MPI_Recv(&recv, 1, MPI_INT, rank, channel1, MPI_COMM_WORLD, &status);
     if (recv > nums[0]) {
@@ -126,11 +126,9 @@ bool _recv(int rank, int* nums)
         sorted = false;
     } else send = recv;
     MPI_Send(&send, 1, MPI_INT, rank, channel2, MPI_COMM_WORLD);
-    DEBUG("#%d(@%d) recv: %d, send: %d\n", rank + 1, ccc, recv, send);
-    return sorted;
 }
 
-void _send(int rank, int* nums, int count)
+void mpi_send(int rank, int* nums, int count)
 {
     if (rank >= world_size) return;
 
@@ -139,7 +137,6 @@ void _send(int rank, int* nums, int count)
     MPI_Send(&send, 1, MPI_INT, rank, channel1, MPI_COMM_WORLD);
     MPI_Recv(&recv, 1, MPI_INT, rank, channel2, MPI_COMM_WORLD, &status);
     nums[count - 1] = recv;
-    DEBUG("#%d(@%d) send: %d, recv: %d\n", rank - 1, ccc, send, recv);
 }
 
 int main(int argc, char** argv)
@@ -153,58 +150,43 @@ int main(int argc, char** argv)
 
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
-    /** For data size is less then proccessors **/
+    /** For data size is less then processors **/
     if (file_size < world_size) world_size = 1;
 
     subset_size = file_size / world_size;
     if (file_size % world_size) subset_size += 1;
-
 
     int *nums = (int*) malloc(subset_size * sizeof(int));
     int count = mpi_read_file(argv[2], nums, subset_size);
 
     DEBUG("#%d/%d count=%d\n", world_rank, world_size, count);
 
-    bool p_sorted = false;
+    int first = subset_size * world_rank;
 
     if (world_size <= 1) {
         odd_even_sort(nums, count);
-        p_sorted = true;
+        sorted = true;
     }
 
-    while (!p_sorted) {
-        p_sorted = true;
+    while (!sorted) {
 
-        // even-phase
-        if (is_odd(subset_size)) {
-            if (is_odd(world_rank))
-                p_sorted = _recv(world_rank - 1, nums);
-            else
-                _send(world_rank + 1, nums, count);
-        }
-        p_sorted &= _single_phase_sort(nums, 0, count);
-        INFO("#%d: %d even-phase\n", world_rank, ccc);
+        sorted = true;
+
+        /*** even-phase ***/
+        if (is_odd(first)) mpi_recv(world_rank - 1, nums);
+        else mpi_send(world_rank + 1, nums, count);
+        _single_phase_sort(nums, EVEN_PHASE, count);
         MPI_Barrier(MPI_COMM_WORLD);
 
-        // odd-phase
-        if (is_odd(subset_size)) {
-            if (is_odd(world_rank))
-                _send(world_rank + 1, nums, count);
-            else
-                p_sorted = _recv(world_rank - 1, nums);
-        } else {
-            if (is_even(world_rank))
-                _send(world_rank + 1, nums, count);
-            else
-                p_sorted = _recv(world_rank - 1, nums);
-        }
-        p_sorted &= _single_phase_sort(nums, 1, count);
-        INFO("#%d: %d odd-phase\n", world_rank, ccc++);
+        /*** odd-phase ***/
+        if (is_odd(first)) mpi_send(world_rank + 1, nums, count);
+        else mpi_recv(world_rank - 1, nums);
+        _single_phase_sort(nums, ODD_PHASE, count);
         MPI_Barrier(MPI_COMM_WORLD);
 
         bool tmp;
-        MPI_Allreduce(&p_sorted, &tmp, 1, MPI_CHAR, MPI_LAND, MPI_COMM_WORLD);
-        p_sorted = tmp;
+        MPI_Allreduce(&sorted, &tmp, 1, MPI_CHAR, MPI_LAND, MPI_COMM_WORLD);
+        sorted = tmp;
     }
 
     mpi_write_file(argv[3], nums, count);
