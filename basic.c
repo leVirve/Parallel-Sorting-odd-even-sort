@@ -93,24 +93,20 @@ void mpi_write_file(
     MPI_File_close(&fh);
 }
 
-void odd_even_sort(int* a, int size)
-{
-    int i;
-    bool sorted = false;
-    while (!sorted) {
-        sorted = true;
-        for (i = 1; i < size - 1; i += 2)
-            if (a[i] > a[i + 1]) { swap(a[i], a[i + 1]); sorted = false; }
-        for (i = 0; i < size - 1; i += 2)
-            if (a[i] > a[i + 1]) { swap(a[i], a[i + 1]); sorted = false; }
-    }
-}
-
 void _single_phase_sort(int* a, int index, int size)
 {
     int i = index;
     for (; i < size - 1; i += 2)
         if (a[i] > a[i + 1]) { swap(a[i], a[i + 1]); sorted = false; }
+}
+
+void odd_even_sort(int* a, int size)
+{
+    while (!sorted) {
+        sorted = true;
+        _single_phase_sort(a, EVEN_PHASE, size);
+        _single_phase_sort(a, ODD_PHASE, size);
+    }
 }
 
 void mpi_recv(int rank, int* nums)
@@ -163,10 +159,7 @@ int main(int argc, char** argv)
 
     int first = subset_size * world_rank;
 
-    if (world_size <= 1) {
-        odd_even_sort(nums, count);
-        sorted = true;
-    }
+    if (world_size <= 1) odd_even_sort(nums, count);
 
     while (!sorted) {
 
