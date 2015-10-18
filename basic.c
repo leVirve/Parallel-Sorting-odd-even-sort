@@ -52,9 +52,9 @@ void mpi_read_file(char* filename, int* nums, int* count)
     start_t = MPI_Wtime();
     gettimeofday(&start, NULL);
 
-    MPI_File_open(MPI_COMM_WORLD, filename, \
+    MPI_File_open(MPI_COMM_WORLD, filename,
                   MPI_MODE_RDONLY, MPI_INFO_NULL, &input);
-    MPI_File_set_view(input, sizeof(int) * subset_size * world_rank, \
+    MPI_File_set_view(input, sizeof(int) * subset_size * world_rank,
                       MPI_INT, MPI_INT, "native", MPI_INFO_NULL);
     MPI_File_read_all(input, nums, subset_size, MPI_INT, &status);
     MPI_File_close(&input);
@@ -76,9 +76,9 @@ void mpi_write_file(char* filename, int* nums, int* count)
     MPI_File fh;
     MPI_Status status;
 
-    MPI_File_open(MPI_COMM_WORLD, filename, \
+    MPI_File_open(MPI_COMM_WORLD, filename,
                   MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &fh);
-    MPI_File_set_view(fh, sizeof(int) * subset_size * world_rank, \
+    MPI_File_set_view(fh, sizeof(int) * subset_size * world_rank,
                       MPI_INT, MPI_INT, "native", MPI_INFO_NULL);
     MPI_File_write_all(fh, nums, *count, MPI_INT, &status);
     MPI_File_close(&fh);
