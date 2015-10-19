@@ -93,8 +93,7 @@ void _single_phase_sort(int* a, int index, int size)
 
 void mpi_recv(int rank, int* nums)
 {
-    if (rank < 0) return;
-
+    if (world_rank >= world_size || rank < 0) return;
     int carrier;
     MPI_Status status;
     MPI_Recv(&carrier, 1, MPI_INT, rank, channel1, MPI_COMM_WORLD, &status);
@@ -125,7 +124,7 @@ int main(int argc, char** argv)
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
     /** For data size is less then processors **/
-    if (file_size < world_size) world_size = 1;
+    if (file_size < world_size) world_size = file_size;
 
     subset_size = file_size / world_size;
     if (file_size % world_size) subset_size += 1;
