@@ -24,9 +24,7 @@
 #define channel2    1
 #define EVEN_PHASE  0
 #define ODD_PHASE   1
-
 #define is_odd(x)   ((x) % 2)
-#define is_even(x)  (!is_odd(x))
 #define swap(i, j)  int t = i; i = j; j = t;
 #define time_diff(x) \
             x.tv_sec - start.tv_sec + \
@@ -39,7 +37,7 @@
 
 bool sorted = false;
 int world_size, world_rank;
-int subset_size;
+int subset_size, global_index;
 double start_t, end_t;
 
 
@@ -54,18 +52,15 @@ void mpi_read_file(char* filename, int* nums, int* count)
 
     MPI_File_open(MPI_COMM_WORLD, filename,
                   MPI_MODE_RDONLY, MPI_INFO_NULL, &input);
-    MPI_File_set_view(input, sizeof(int) * subset_size * world_rank,
+    MPI_File_set_view(input, sizeof(int) * global_index,
                       MPI_INT, MPI_INT, "native", MPI_INFO_NULL);
     MPI_File_read_all(input, nums, subset_size, MPI_INT, &status);
     MPI_File_close(&input);
+    MPI_Get_count(&status, MPI_INT, count);
 
 #ifdef _FILE_DEBUG
     dump_status(world_rank);
     end_t = MPI_Wtime();
-#endif
-
-    MPI_Get_count(&status, MPI_INT, count);
-#ifdef _FILE_DEBUG
     DEBUG("My rank=%d/%d read_size=%d\n", world_rank, world_size, *count);
     INFO("Read file: %lf\n", end_t - start_t);
 #endif
@@ -78,7 +73,7 @@ void mpi_write_file(char* filename, int* nums, int* count)
 
     MPI_File_open(MPI_COMM_WORLD, filename,
                   MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &fh);
-    MPI_File_set_view(fh, sizeof(int) * subset_size * world_rank,
+    MPI_File_set_view(fh, sizeof(int) * global_index,
                       MPI_INT, MPI_INT, "native", MPI_INFO_NULL);
     MPI_File_write_all(fh, nums, *count, MPI_INT, &status);
     MPI_File_close(&fh);
@@ -94,7 +89,7 @@ void _single_phase_sort(int* a, int index, int size)
 void mpi_recv(int rank, int* nums)
 {
     if (rank < 0) return;
-
+    DEBUG("#%d recv from #%d\n", world_rank, rank);
     int carrier;
     MPI_Status status;
     MPI_Recv(&carrier, 1, MPI_INT, rank, channel1, MPI_COMM_WORLD, &status);
@@ -105,7 +100,7 @@ void mpi_recv(int rank, int* nums)
 void mpi_send(int rank, int* nums, int count)
 {
     if (rank >= world_size) return;
-
+    DEBUG("#%d send to #%d\n", world_rank, rank);
     int carrier;
     MPI_Status status;
     MPI_Send(&nums[count - 1], 1, MPI_INT, rank, channel1, MPI_COMM_WORLD);
@@ -128,24 +123,37 @@ int main(int argc, char** argv)
     if (file_size < world_size) world_size = 1;
 
     subset_size = file_size / world_size;
-    if (file_size % world_size) subset_size += 1;
+    int _remained = file_size - subset_size * world_size;
+    if (world_rank < _remained) {
+        subset_size += 1;
+        global_index = subset_size * world_rank;
+    } else {
+        global_index = subset_size * world_rank + _remained;
+    }
 
     int count, *nums = (int*) malloc(subset_size * sizeof(int));
-    int first = subset_size * world_rank;
     bool single_process = false;
     mpi_read_file(argv[2], nums, &count);
 
-    DEBUG("#%d/%d count=%d\n", world_rank, world_size, count);
+    DEBUG("#%d/%d count=%d(%d)\n", world_rank, world_size, count, subset_size);
 
     if (world_size <= 1) single_process = true;
 
     while (!sorted) {
 
+        /**
+        // It may gg, if the size is well-partition
+        // the global index of first element in process(k) may be misfuntional
+        // the size is variable!!!!
+        // 012 345 678 910 1112
+        // 0123 4567 891011
+        **/
+
         sorted = true;
 
         /*** even-phase ***/
         if (!single_process) {
-            if (is_odd(first)) mpi_recv(world_rank - 1, nums);
+            if (is_odd(global_index)) mpi_recv(world_rank - 1, nums);
             else mpi_send(world_rank + 1, nums, count);
             MPI_Barrier(MPI_COMM_WORLD);
         }
@@ -153,7 +161,7 @@ int main(int argc, char** argv)
 
         /*** odd-phase ***/
         if (!single_process) {
-            if (is_odd(first)) mpi_send(world_rank + 1, nums, count);
+            if (is_odd(global_index)) mpi_send(world_rank + 1, nums, count);
             else mpi_recv(world_rank - 1, nums);
             MPI_Barrier(MPI_COMM_WORLD);
         }
