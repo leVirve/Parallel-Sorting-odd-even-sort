@@ -131,7 +131,8 @@ int main(int argc, char** argv)
     if (file_size % world_size) subset_size += 1;
 
     int count, *nums = (int*) malloc(subset_size * sizeof(int));
-    int first = subset_size * world_rank;
+    int head = subset_size * world_rank;
+    int tail = subset_size * world_rank + subset_size - 1;
     bool single_process = false;
     mpi_read_file(argv[2], nums, &count);
 
@@ -140,28 +141,35 @@ int main(int argc, char** argv)
     if (world_size <= 1) single_process = true;
 
     while (!sorted) {
-
         sorted = true;
 
         /*** even-phase ***/
         if (!single_process) {
-            if (is_odd(first)) mpi_recv(world_rank - 1, nums);
-            else mpi_send(world_rank + 1, nums, count);
+            if (is_even(world_rank) && is_even(tail) ||
+                is_even(world_rank) && is_odd(head))
+                mpi_send(world_rank + 1, nums, count);
+            if (is_odd(world_rank) && is_odd(head) ||
+                is_odd(world_rank) && is_even(tail))
+                mpi_recv(world_rank - 1, nums);
             MPI_Barrier(MPI_COMM_WORLD);
         }
         _single_phase_sort(nums, EVEN_PHASE, count);
 
         /*** odd-phase ***/
         if (!single_process) {
-            if (is_odd(first)) mpi_send(world_rank + 1, nums, count);
-            else mpi_recv(world_rank - 1, nums);
+            if (is_even(world_rank) && is_odd(tail) ||
+                is_odd(world_rank) && is_odd(tail))
+                mpi_send(world_rank + 1, nums, count);
+            if (is_odd(world_rank) && is_even(head) ||
+                is_even(world_rank) && is_even(head))
+                mpi_recv(world_rank - 1, nums);
             MPI_Barrier(MPI_COMM_WORLD);
         }
         _single_phase_sort(nums, ODD_PHASE, count);
 
         if (!single_process) {
             bool tmp = sorted;
-            MPI_Allreduce(&tmp, &sorted, 1, MPI_CHAR, MPI_LAND, MPI_COMM_WORLD);
+            MPI_Allreduce(&tmp, &sorted, 1, MPI_CHAR, MPI_BAND, MPI_COMM_WORLD);
         }
     }
 
