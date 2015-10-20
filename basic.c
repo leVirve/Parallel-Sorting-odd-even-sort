@@ -4,14 +4,12 @@
 #include <sys/time.h>
 
 #ifdef _DEBUG
-#define DEBUG(format, args...) \
-            printf("[Line:%d] " format, __LINE__, ##args); fflush(stdout);
+#define DEBUG(format, args...) printf("[Line:%d] " format, __LINE__, ##args);
 #else
 #define DEBUG(args...)
 #endif
 #ifdef _INFO
-#define INFO(format, args...) \
-            printf("[Line:%d] " format, __LINE__, ##args); fflush(stdout);
+#define INFO(format, args...) printf("[Line:%d] " format, __LINE__, ##args);
 #else
 #define INFO(args...)
 #endif
@@ -25,7 +23,7 @@
 #define EVEN_PHASE  0
 #define ODD_PHASE   1
 
-#define is_odd(x)   ((x) % 2)
+#define is_odd(x)   ((x) & 1)
 #define is_even(x)  (!is_odd(x))
 #define swap(i, j)  int t = i; i = j; j = t;
 #define time_diff(x) \
@@ -84,13 +82,6 @@ void mpi_write_file(char* filename, int* nums, int* count)
     MPI_File_close(&fh);
 }
 
-void _single_phase_sort(int* a, int index, int size)
-{
-    int i = index;
-    for (; i < size - 1; i += 2)
-        if (a[i] > a[i + 1]) { swap(a[i], a[i + 1]); sorted = false; }
-}
-
 void mpi_recv(int rank, int* nums)
 {
     if (world_rank >= world_size || rank < 0) return;
@@ -112,6 +103,13 @@ void mpi_send(int rank, int* nums, int count)
     nums[count - 1] = carrier;
 }
 
+void _single_phase_sort(int* a, int index, int size)
+{
+    int i = index;
+    for (; i < size - 1; i += 2)
+        if (a[i] > a[i + 1]) { swap(a[i], a[i + 1]); sorted = false; }
+}
+
 int main(int argc, char** argv)
 {
     struct timeval start;
@@ -123,21 +121,20 @@ int main(int argc, char** argv)
 
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+
+    bool single_process = false;
     /** For data size is less then processors **/
     if (file_size < world_size) world_size = file_size;
+    if (world_size <= 1) single_process = true;
 
     subset_size = file_size / world_size;
     if (file_size % world_size) subset_size += 1;
 
     int count, *nums = (int*) malloc(subset_size * sizeof(int));
-    int head = subset_size * world_rank;
-    int tail = subset_size * world_rank + subset_size - 1;
-    bool single_process = false;
+    int head = subset_size * world_rank, tail = head + subset_size - 1;
     mpi_read_file(argv[2], nums, &count);
 
     DEBUG("#%d/%d count=%d\n", world_rank, world_size, count);
-
-    if (world_size <= 1) single_process = true;
 
     while (!sorted) {
         sorted = true;
