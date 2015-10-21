@@ -1,7 +1,6 @@
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/time.h>
 
 #ifdef _DEBUG
 #define DEBUG(format, args...) printf("[Line:%d] " format, __LINE__, ##args);
@@ -26,29 +25,14 @@
 #define is_odd(x)   ((x) & 1)
 #define is_even(x)  (!is_odd(x))
 #define swap(i, j)  int t = i; i = j; j = t;
-#define time_diff(x) \
-            x.tv_sec - start.tv_sec + \
-            (double)(x.tv_usec - start.tv_usec) / MICRO_SEC
-#define dump_status(jid) \
-            struct timeval timestamp; \
-            gettimeofday(&timestamp, NULL); \
-            INFO("Worker#%d @(time: %.12f)\n", jid, time_diff(timestamp)); \
-            fflush(stdout);
 
 bool sorted = false;
-int world_size, world_rank;
-int subset_size;
-double start_t, end_t;
-
+int world_size, world_rank, subset_size;
 
 void mpi_read_file(char* filename, int* nums, int* count)
 {
     MPI_File input;
     MPI_Status status;
-    struct timeval start;
-
-    start_t = MPI_Wtime();
-    gettimeofday(&start, NULL);
 
     MPI_File_open(MPI_COMM_WORLD, filename,
                   MPI_MODE_RDONLY, MPI_INFO_NULL, &input);
@@ -56,17 +40,8 @@ void mpi_read_file(char* filename, int* nums, int* count)
                       MPI_INT, MPI_INT, "native", MPI_INFO_NULL);
     MPI_File_read_all(input, nums, subset_size, MPI_INT, &status);
     MPI_File_close(&input);
-
-#ifdef _FILE_DEBUG
-    dump_status(world_rank);
-    end_t = MPI_Wtime();
-#endif
-
     MPI_Get_count(&status, MPI_INT, count);
-#ifdef _FILE_DEBUG
     DEBUG("My rank=%d/%d read_size=%d\n", world_rank, world_size, *count);
-    INFO("Read file: %lf\n", end_t - start_t);
-#endif
 }
 
 void mpi_write_file(char* filename, int* nums, int* count)
@@ -95,7 +70,6 @@ void mpi_recv(int rank, int* nums)
 void mpi_send(int rank, int* nums, int count)
 {
     if (rank >= world_size) return;
-
     int carrier;
     MPI_Status status;
     MPI_Send(&nums[count - 1], 1, MPI_INT, rank, channel1, MPI_COMM_WORLD);
@@ -112,12 +86,10 @@ void _single_phase_sort(int* a, int index, int size)
 
 int main(int argc, char** argv)
 {
-    struct timeval start;
     int file_size;
     sscanf(argv[1], "%d", &file_size);
 
     MPI_Init(&argc, &argv);
-    gettimeofday(&start, NULL);
 
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
@@ -170,14 +142,10 @@ int main(int argc, char** argv)
     }
 
     mpi_write_file(argv[3], nums, &count);
-    DEBUG("#%d leave sorting-loop(%d)\n", world_rank, count);
+    printf("#%d leave sorting-loop(%d)\n", world_rank, count);
 
     MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
     free(nums);
-
-#ifdef _FILE_DEBUG
-    dump_status(world_rank);
-#endif
     return 0;
 }
