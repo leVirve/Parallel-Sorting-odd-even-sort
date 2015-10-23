@@ -142,10 +142,10 @@ int main(int argc, char** argv)
     }
 
     mpi_write_file(argv[3], nums, &count);
-    printf("#%d leave sorting-loop(%d)\n", world_rank, count);
+    free(nums);
 
+    INFO("#%d leave sorting-loop(%d)\n", world_rank, count);
     MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
-    free(nums);
     return 0;
 }
