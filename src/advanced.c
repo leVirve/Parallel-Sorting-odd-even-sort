@@ -2,8 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
-#include <inttypes.h>
 
 #ifdef _DEBUG
 #define DEBUG(format, args...) printf("[Line:%d] " format, __LINE__, ##args);
@@ -28,12 +26,9 @@
 #define is_odd(x)   ((x) & 1)
 #define is_even(x)  (!is_odd(x))
 #define swap(i, j)  int t = i; i = j; j = t;
-#define timeit(t) clock_gettime(CLOCK_REALTIME, t)
 
 bool sorted = false;
 int world_size, world_rank, subset_size, last_size;
-long io_time = 0, comp_time = 0, comm_time = 0;
-struct timespec s, e;
 
 void calc_time(long* target, struct timespec a, struct timespec b)
 {
@@ -53,40 +48,25 @@ void mpi_read_file(char* filename, int* nums, int* count)
 {
     MPI_File input;
     MPI_Status status;
-
     MPI_File_open(MPI_COMM_WORLD, filename,
                   MPI_MODE_RDONLY, MPI_INFO_NULL, &input);
     MPI_File_set_view(input, sizeof(int) * subset_size * world_rank,
                       MPI_INT, MPI_INT, "native", MPI_INFO_NULL);
-
-    timeit(&s);
     MPI_File_read_all(input, nums, subset_size, MPI_INT, &status);
-    timeit(&e);
-
     MPI_File_close(&input);
     MPI_Get_count(&status, MPI_INT, count);
-
-    // DEBUG("My rank=%d/%d read_size=%d\n", world_rank, world_size, *count);
-    calc_time(&io_time, e, s);
 }
 
 void mpi_write_file(char* filename, int* nums, int* count)
 {
     MPI_File fh;
     MPI_Status status;
-
     MPI_File_open(MPI_COMM_WORLD, filename,
                   MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &fh);
     MPI_File_set_view(fh, sizeof(int) * subset_size * world_rank,
                       MPI_INT, MPI_INT, "native", MPI_INFO_NULL);
-
-    timeit(&s);
     MPI_File_write_all(fh, nums, *count, MPI_INT, &status);
-    timeit(&e);
     MPI_File_close(&fh);
-
-    // DEBUG("#%d Write file: %ld nsec\n", world_rank, e.tv_nsec - s.tv_nsec);
-    calc_time(&io_time, e, s);
 }
 
 void _merge(int* buf, int lsz, int* recv, int rsz, bool phase)
@@ -168,10 +148,7 @@ int main(int argc, char** argv)
 
     qsort(nums, count, sizeof(int), cmp);
 
-    DEBUG("#%d/%d count=%d\n", world_rank, world_size, count);
-
     int ccc = 0;
-
     while (!sorted) {
         if (ccc >= world_size) break;
         sorted = true;
@@ -191,9 +168,6 @@ int main(int argc, char** argv)
     }
 
     mpi_write_file(argv[3], nums, &count);
-    DEBUG("#%d leave sorting-loop(%d)\n", world_rank, count);
-
-    MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
     free(nums);
     return 0;
