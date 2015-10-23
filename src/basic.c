@@ -145,7 +145,6 @@ int main(int argc, char** argv)
     free(nums);
 
     INFO("#%d leave sorting-loop(%d)\n", world_rank, count);
-    MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
     return 0;
 }

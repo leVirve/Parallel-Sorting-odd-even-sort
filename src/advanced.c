@@ -13,7 +13,6 @@
 #else
 #define INFO(args...)
 #endif
-
 #define bool        char
 #define true        1
 #define false       0
@@ -21,21 +20,13 @@
 #define channel1    0
 #define channel2    1
 #define LEFT_PHASE  0
-#define RIGHT_PHASE   1
-
+#define RIGHT_PHASE 1
 #define is_odd(x)   ((x) & 1)
 #define is_even(x)  (!is_odd(x))
 #define swap(i, j)  int t = i; i = j; j = t;
 
 bool sorted = false;
-int world_size, world_rank, subset_size, last_size;
-
-void calc_time(long* target, struct timespec a, struct timespec b)
-{
-    int sec = a.tv_sec - b.tv_sec;
-    int nsec = a.tv_nsec - b.tv_nsec;
-    *target += sec * 1000000000 + nsec;
-}
+int world_size, world_rank, subset_size;
 
 int cmp(const void* a, const void* b)
 {
@@ -76,10 +67,7 @@ void _merge(int* buf, int lsz, int* recv, int rsz, bool phase)
     while (i < lsz || j < rsz) {
         if (i >= lsz) tmp[k++] = recv[j++];
         else if (j >= rsz) tmp[k++] = buf[i++];
-        else {
-            if (buf[i] <= recv[j]) tmp[k++] = buf[i++];
-            else tmp[k++] = recv[j++];
-        }
+        else tmp[k++] = (buf[i] <= recv[j]) ? buf[i++] : recv[j++];
     }
     memsz = lsz * sizeof(int);
     memptr = (phase == LEFT_PHASE) ? tmp : tmp + rsz;
@@ -90,53 +78,43 @@ void _merge(int* buf, int lsz, int* recv, int rsz, bool phase)
 void mpi_recv(int rank, int* nums, int count)
 {
     if (world_rank >= world_size || rank < 0) return;
-    int sz = subset_size;
-    int recv[subset_size];
-    MPI_Status status;
-    MPI_Recv(recv, sz, MPI_INT, rank, channel1, MPI_COMM_WORLD, &status);
+    int recv[subset_size], c;
+    MPI_Status stat;
+    MPI_Recv(recv, subset_size, MPI_INT, rank, channel1, MPI_COMM_WORLD, &stat);
     MPI_Send(nums, count, MPI_INT, rank, channel2, MPI_COMM_WORLD);
-    _merge(nums, count, recv, sz, RIGHT_PHASE);
+    MPI_Get_count(&stat, MPI_INT, &c);
+    _merge(nums, count, recv, c, RIGHT_PHASE);
 }
 
 void mpi_send(int rank, int* nums, int count)
 {
     if (rank >= world_size) return;
-    int sz = (rank == world_size - 1) ? last_size : subset_size;
-    int recv[subset_size];
-    MPI_Status status;
+    int recv[subset_size], c;
+    MPI_Status stat;
     MPI_Send(nums, count, MPI_INT, rank, channel1, MPI_COMM_WORLD);
-    MPI_Recv(recv, sz, MPI_INT, rank, channel2, MPI_COMM_WORLD, &status);
-    _merge(nums, count, recv, sz, LEFT_PHASE);
+    MPI_Recv(recv, subset_size, MPI_INT, rank, channel2, MPI_COMM_WORLD, &stat);
+    MPI_Get_count(&stat, MPI_INT, &c);
+    _merge(nums, count, recv, c, LEFT_PHASE);
 }
 
 int main(int argc, char** argv)
 {
-    int file_size;
+    int file_size, count, *nums;
     sscanf(argv[1], "%d", &file_size);
 
     MPI_Init(&argc, &argv);
-
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
-
-    bool single_process = false;
     /** For data size is less then processors **/
     if (file_size < world_size) world_size = file_size;
-    if (world_size <= 1) { single_process = true; sorted = true; }
 
     subset_size = file_size / world_size;
-    last_size = subset_size;
-    if (file_size % world_size) {
-        subset_size += 1;
-        file_size - subset_size * world_size;
-    }
+    if (file_size % world_size) subset_size += 1;
+    if (world_size <= 1) sorted = true;
 
-    int count, *nums = (int*) malloc(subset_size * sizeof(int));
-    int head = subset_size * world_rank, tail = head + subset_size - 1;
+    nums = (int*) malloc(subset_size * sizeof(int));
     mpi_read_file(argv[2], nums, &count);
-
     qsort(nums, count, sizeof(int), cmp);
-
     while (!sorted) {
         sorted = true;
 
@@ -153,7 +131,6 @@ int main(int argc, char** argv)
         bool tmp = sorted;
         MPI_Allreduce(&tmp, &sorted, 1, MPI_CHAR, MPI_BAND, MPI_COMM_WORLD);
     }
-
     mpi_write_file(argv[3], nums, &count);
     MPI_Finalize();
     free(nums);
