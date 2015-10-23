@@ -72,7 +72,7 @@ void mpi_write_file(char* filename, int* nums, int* count)
 void _merge(int* buf, int lsz, int* recv, int rsz, bool phase)
 {
     int tmp[subset_size * 2];
-    int i = 0, j = 0, k = 0;
+    int i = 0, j = 0, k = 0, memsz, *memptr;
     while (i < lsz || j < rsz) {
         if (i >= lsz) tmp[k++] = recv[j++];
         else if (j >= rsz) tmp[k++] = buf[i++];
@@ -81,21 +81,10 @@ void _merge(int* buf, int lsz, int* recv, int rsz, bool phase)
             else tmp[k++] = recv[j++];
         }
     }
-    if (phase == LEFT_PHASE) {
-        for (i = 0; i < lsz; ++i) {
-            if (buf[i] != tmp[i]) {
-                sorted = false;
-                buf[i] = tmp[i];
-            }
-        }
-    } else {
-        for (i = 0; i < lsz; ++i) {
-            if (buf[i] != tmp[rsz + i]) {
-                sorted = false;
-                buf[i] = tmp[rsz + i];
-            }
-        }
-    }
+    memsz = lsz * sizeof(int);
+    memptr = (phase == LEFT_PHASE) ? tmp : tmp + rsz;
+    if (memcmp(buf, memptr, memsz) != 0) sorted = false;
+    memcpy(buf, memptr, memsz);
 }
 
 void mpi_recv(int rank, int* nums, int count)
@@ -148,9 +137,7 @@ int main(int argc, char** argv)
 
     qsort(nums, count, sizeof(int), cmp);
 
-    int ccc = 0;
     while (!sorted) {
-        if (ccc >= world_size) break;
         sorted = true;
 
         /*** even-phase ***/
