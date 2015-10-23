@@ -9,14 +9,14 @@ all: clean advanced submit watch
 
 basic:
 	$(eval TARGET := $(TARGET)_basic)
-	mpicc -o $(TARGET) basic.c $(CFLAGS) $(LOGFLAGS)
+	mpicc -o $(TARGET) src/basic.c $(CFLAGS) $(LOGFLAGS)
 
 advanced:
 	$(eval TARGET := $(TARGET)_advanced)
-	mpicc -o $(TARGET) advanced.c $(CFLAGS) $(LOGFLAGS)
+	mpicc -o $(TARGET) src/advanced.c $(CFLAGS) $(LOGFLAGS)
 
 submit:
-	qsub -v exe=$(TARGET) test_job.sh
+	qsub -v exe=$(TARGET) testcase/submit$(i).sh
 
 watch:
 	watch qstat -a
@@ -25,7 +25,12 @@ result:
 	cat $(REPORT) | more
 
 cmp:
-	cmp ../testcase/sorted$(i) judge_out_$(i)
+	cmp testcase/sorted$(i) judge_out_$(i)
+
+judge:
+	cp src/basic.c HW1_101062337_basic.c
+	cp src/advanced.c HW1_101062337_advanced.c
+	./judge.sh
 
 clean:
 	-@rm $(OUTPUT) 2>/dev/null || true
