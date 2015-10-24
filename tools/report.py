@@ -96,9 +96,9 @@ if __name__ == '__main__':
         print(m)
 
         output = 'judge_exp_%d' % i
-        # validate_job(answer_case, output)
+        validate_job(answer_case, output)
 
-        e = ExecutetimeReporter('%s_' % sys.argv[2] + m)
+        e = ExecutetimeReporter(m)
         queue.append(e)
         with open(job, 'r') as f:
             for line in f.readlines():
