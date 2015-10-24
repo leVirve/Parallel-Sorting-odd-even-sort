@@ -1,5 +1,6 @@
 #! /usr/bin/python
 import os
+import sys
 
 directory = 'experiment'
 
@@ -11,7 +12,7 @@ job = """
 #PBS -l walltime=00:01:00
 
 cd $PBS_O_WORKDIR
-mpiexec ./$exe 1000000 testcase/testcase1000000 judge_exp_%d
+mpiexec ./$exe %s testcase/testcase%s judge_exp_%d
 """
 cases = [
     # (1, 1), (1, 2), (1, 3), (1, 4),
@@ -25,6 +26,8 @@ cases = [
 if not os.path.exists(directory):
     os.makedirs(directory)
 
+data_no = sys.argv[1] if len(sys.argv) > 1 else '1000000'
+
 for i, case in enumerate(cases, 1):
     with open(os.path.join(directory, 'experiment%d.sh' % i), 'w') as f:
-        f.write(job.format(*case) % i)
+        f.write(job.format(*case) % (data_no, data_no, i))

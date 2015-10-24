@@ -1,6 +1,6 @@
 CFLAGS = -std=gnu99 -O3
 # LOGFLAGS = -D_INFO -D_DEBUG
-LOGFLAGS = -D_TIME -D_DEBUG
+LOGFLAGS = -D_TIME
 uuid := $(shell uuidgen)
 TARGET = judge_HW1_$(uuid)_101062337
 REPORT = judge_sh_out.*
@@ -34,7 +34,7 @@ judge:
 	./judge.sh
 
 experiment: advanced
-	number=$(s) ; while [[ $$number -le $(e) ]] ; do \
+	@number=$(s) ; while [[ $$number -le $(e) ]] ; do \
         qsub -v exe=$(TARGET) experiment/experiment$$number.sh ; \
         sleep 1 ; \
         ((number = number + 1)) ; \

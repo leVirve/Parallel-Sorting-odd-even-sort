@@ -19,7 +19,7 @@ class ExecutetimeReporter:
 
     def __init__(self, filename):
         self.filename = filename
-        self.world_info = None
+        self.world_info = ''
         self.log = list()
         self.data = None
 
@@ -34,6 +34,9 @@ class ExecutetimeReporter:
     def report(self):
         self.filename += ' all=' + self.world_info
         ss = [sum(map(operator.itemgetter(n), self.log)) for n in range(1, 5)]
+        if len(self.log) == 0:
+            print(ss)
+            return
         avg = [float(s) / len(self.log) / 1000000 for s in ss]
         self.dump(zip(self.fields, avg))
         self.printf(avg)
@@ -93,7 +96,7 @@ if __name__ == '__main__':
         print(m)
 
         output = 'judge_exp_%d' % i
-        validate_job(answer_case, output)
+        # validate_job(answer_case, output)
 
         e = ExecutetimeReporter('%s_' % sys.argv[2] + m)
         queue.append(e)
