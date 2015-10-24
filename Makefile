@@ -16,6 +16,10 @@ advanced:
 	$(eval TARGET := $(TARGET)_advanced)
 	mpicc -o $(TARGET) src/advanced.c $(CFLAGS) $(LOGFLAGS)
 
+iotest:
+	$(eval TARGET := $(TARGET)_basic)
+	mpicc -o $(TARGET) src/test_io.c $(CFLAGS) $(LOGFLAGS)
+
 submit:
 	qsub -v exe=$(TARGET) testcase/submit$(i).sh
 
@@ -33,10 +37,9 @@ judge:
 	cp src/advanced.c HW1_101062337_advanced.c
 	./judge.sh
 
-experiment: advanced
+experiment: $(exe)
 	@number=$(s) ; while [[ $$number -le $(e) ]] ; do \
         qsub -v exe=$(TARGET) experiment/experiment$$number.sh ; \
-        sleep 1 ; \
         ((number = number + 1)) ; \
     done
 
