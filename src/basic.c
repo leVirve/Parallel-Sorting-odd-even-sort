@@ -16,7 +16,6 @@
 #define bool        char
 #define true        1
 #define false       0
-#define MICRO_SEC   1000000
 #define channel1    0
 #define channel2    1
 #define EVEN_PHASE  0
@@ -33,7 +32,6 @@ void mpi_read_file(char* filename, int* nums, int* count)
 {
     MPI_File input;
     MPI_Status status;
-
     MPI_File_open(MPI_COMM_WORLD, filename,
                   MPI_MODE_RDONLY, MPI_INFO_NULL, &input);
     MPI_File_set_view(input, sizeof(int) * subset_size * world_rank,
@@ -48,7 +46,6 @@ void mpi_write_file(char* filename, int* nums, int* count)
 {
     MPI_File fh;
     MPI_Status status;
-
     MPI_File_open(MPI_COMM_WORLD, filename,
                   MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &fh);
     MPI_File_set_view(fh, sizeof(int) * subset_size * world_rank,
@@ -140,11 +137,9 @@ int main(int argc, char** argv)
             MPI_Allreduce(&tmp, &sorted, 1, MPI_CHAR, MPI_BAND, MPI_COMM_WORLD);
         }
     }
-
     mpi_write_file(argv[3], nums, &count);
     free(nums);
-
-    INFO("#%d leave sorting-loop(%d)\n", world_rank, count);
+    DEBUG("#%d leave sorting-loop(%d)\n", world_rank, count);
     MPI_Finalize();
     return 0;
 }

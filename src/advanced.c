@@ -16,7 +16,6 @@
 #define bool        char
 #define true        1
 #define false       0
-#define MICRO_SEC   1000000
 #define channel1    0
 #define channel2    1
 #define LEFT_PHASE  0
@@ -26,7 +25,7 @@
 #define swap(i, j)  int t = i; i = j; j = t;
 
 bool sorted = false;
-int world_size, world_rank, subset_size;
+int world_size, world_rank, subset_size, *nums, *recv, *tmp;
 
 int cmp(const void* a, const void* b)
 {
@@ -62,7 +61,6 @@ void mpi_write_file(char* filename, int* nums, int* count)
 
 void _merge(int* buf, int lsz, int* recv, int rsz, bool phase)
 {
-    int tmp[subset_size * 2];
     int i = 0, j = 0, k = 0, memsz, *memptr;
     while (i < lsz || j < rsz) {
         if (i >= lsz) tmp[k++] = recv[j++];
@@ -78,7 +76,7 @@ void _merge(int* buf, int lsz, int* recv, int rsz, bool phase)
 void mpi_recv(int rank, int* nums, int count)
 {
     if (world_rank >= world_size || rank < 0) return;
-    int recv[subset_size], c;
+    int c;
     MPI_Status stat;
     MPI_Recv(recv, subset_size, MPI_INT, rank, channel1, MPI_COMM_WORLD, &stat);
     MPI_Send(nums, count, MPI_INT, rank, channel2, MPI_COMM_WORLD);
@@ -89,7 +87,7 @@ void mpi_recv(int rank, int* nums, int count)
 void mpi_send(int rank, int* nums, int count)
 {
     if (rank >= world_size) return;
-    int recv[subset_size], c;
+    int c;
     MPI_Status stat;
     MPI_Send(nums, count, MPI_INT, rank, channel1, MPI_COMM_WORLD);
     MPI_Recv(recv, subset_size, MPI_INT, rank, channel2, MPI_COMM_WORLD, &stat);
@@ -99,7 +97,7 @@ void mpi_send(int rank, int* nums, int count)
 
 int main(int argc, char** argv)
 {
-    int file_size, count, *nums;
+    int file_size, count;
     sscanf(argv[1], "%d", &file_size);
 
     MPI_Init(&argc, &argv);
@@ -113,11 +111,13 @@ int main(int argc, char** argv)
     if (world_size <= 1) sorted = true;
 
     nums = (int*) malloc(subset_size * sizeof(int));
+    recv = (int*) malloc(subset_size * sizeof(int));
+    tmp = (int*) malloc(subset_size * 2 * sizeof(int));
     mpi_read_file(argv[2], nums, &count);
+
     qsort(nums, count, sizeof(int), cmp);
     while (!sorted) {
         sorted = true;
-
         /*** even-phase ***/
         if (is_even(world_rank)) mpi_send(world_rank + 1, nums, count);
         else mpi_recv(world_rank - 1, nums, count);
@@ -134,5 +134,7 @@ int main(int argc, char** argv)
     mpi_write_file(argv[3], nums, &count);
     MPI_Finalize();
     free(nums);
+    free(recv);
+    free(tmp);
     return 0;
 }
