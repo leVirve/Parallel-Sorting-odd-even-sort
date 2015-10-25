@@ -1,0 +1,49 @@
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Precompiled Headers
+*.gch
+*.pch
+*.pyc
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+test_job.sh
+
+# Log
+log/
+experiment/
+
+# Self-generated testcase
+testcase/testcase100000
+testcase/testcase1000000
+testcase/testcase10000000
+testcase/testcase100000000
+testcase/sorted100000
+testcase/sorted1000000
+testcase/sorted10000000
+testcase/sorted100000000
+
