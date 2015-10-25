@@ -103,10 +103,10 @@ int main(int argc, char** argv)
 
     nums = (int*) malloc(subset_size * sizeof(int));
 
-#ifdef _SEQ_IO
+#ifndef _SEQ_IO
     sequential_read_file(argv[2], nums, &count);
     sequential_write_file(argv[3], nums, &count);
-#elif
+#else
     mpi_read_file(argv[2], nums, &count);
     mpi_write_file(argv[3], nums, &count);
 #endif
