@@ -173,6 +173,5 @@ int main(int argc, char** argv)
            io_time + comm_time + comp_time,
            io_time, comm_time, comp_time);
 #endif
-
     return 0;
 }

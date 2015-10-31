@@ -44,7 +44,6 @@ void mpi_read_file(char* filename, int* nums, int* count)
 {
     MPI_File input;
     MPI_Status status;
-
     timeit(&s);
     MPI_File_open(MPI_COMM_WORLD, filename,
                   MPI_MODE_RDONLY, MPI_INFO_NULL, &input);
@@ -61,7 +60,6 @@ void mpi_write_file(char* filename, int* nums, int* count)
 {
     MPI_File fh;
     MPI_Status status;
-
     timeit(&s);
     MPI_File_open(MPI_COMM_WORLD, filename,
                   MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &fh);
@@ -169,10 +167,8 @@ int main(int argc, char** argv)
             timeit(&e); calc_time(&comm_time, e, s);
         }
     }
-
     mpi_write_file(argv[3], nums, &count);
     free(nums);
-
     DEBUG("#%d leave sorting-loop(%d)\n", world_rank, count);
     MPI_Finalize();
 
