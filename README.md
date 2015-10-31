@@ -4,7 +4,7 @@ Implement parallel Odd-Even Sort with MPI.
 ##Experiment System Spec 
 8 nodes, each has:
 - Intel Xeon CPU L5640 @2.27GHz (2x6 cores)
-- 4 GB memory
+- 24 GB memory
 - 2TB HDD Storage
 
 ##Difference in two implementations
