@@ -15,7 +15,6 @@ void mpi_recv(int rank, int* nums)
     if (buffer > first_number) {
         sorted = false;
         nums[0] = buffer;
-        DEBUG("#%d got=%d\n", world_rank, buffer);
     }
 }
 
@@ -30,7 +29,6 @@ void mpi_send(int rank, int* nums, int count)
     if (last_number > buffer) {
         sorted = false;
         nums[count - 1] = buffer;
-        DEBUG("#%d got=%d\n", world_rank, buffer);
     }
 }
 
@@ -65,11 +63,9 @@ int main(int argc, char** argv)
 
         /*** even-phase ***/
         if (!single_process) {
-            if ((is_even(world_rank) && is_even(tail)) ||
-                (is_even(world_rank) && is_odd(head)))
+            if (is_even(world_rank) && is_even(tail))
                 mpi_send(world_rank + 1, nums, count);
-            if ((is_odd(world_rank) && is_odd(head)) ||
-                (is_odd(world_rank) && is_even(tail)))
+            if (is_odd(world_rank) && is_odd(head))
                 mpi_recv(world_rank - 1, nums);
             MPI_Barrier(MPI_COMM_WORLD);
         }
@@ -77,11 +73,9 @@ int main(int argc, char** argv)
 
         /*** odd-phase ***/
         if (!single_process) {
-            if ((is_even(world_rank) && is_odd(tail)) ||
-                (is_odd(world_rank) && is_odd(tail)))
+            if (is_odd(tail))
                 mpi_send(world_rank + 1, nums, count);
-            if ((is_odd(world_rank) && is_even(head)) ||
-                (is_even(world_rank) && is_even(head)))
+            if (is_even(head))
                 mpi_recv(world_rank - 1, nums);
             MPI_Barrier(MPI_COMM_WORLD);
         }
