@@ -7,21 +7,31 @@ int num;
 void mpi_recv(int rank, int* nums)
 {
     if (world_rank >= world_size || rank < 0) return;
-    int carrier;
+    int buffer, first_number = nums[0];
     MPI_Status status;
-    MPI_Recv(&carrier, 1, MPI_INT, rank, channel1, MPI_COMM_WORLD, &status);
-    if (carrier > nums[0]) { swap(carrier, nums[0]); sorted = false; }
-    MPI_Send(&carrier, 1, MPI_INT, rank, channel2, MPI_COMM_WORLD);
+    MPI_Sendrecv(&first_number, 1, MPI_INT, rank, channel2,
+                 &buffer, 1, MPI_INT, rank, channel1,
+                 MPI_COMM_WORLD, &status);
+    if (buffer > first_number) {
+        sorted = false;
+        nums[0] = buffer;
+        DEBUG("#%d got=%d\n", world_rank, buffer);
+    }
 }
 
 void mpi_send(int rank, int* nums, int count)
 {
     if (rank >= world_size) return;
-    int carrier;
+    int buffer, last_number = nums[count - 1];
     MPI_Status status;
-    MPI_Send(&nums[count - 1], 1, MPI_INT, rank, channel1, MPI_COMM_WORLD);
-    MPI_Recv(&carrier, 1, MPI_INT, rank, channel2, MPI_COMM_WORLD, &status);
-    nums[count - 1] = carrier;
+    MPI_Sendrecv(&last_number, 1, MPI_INT, rank, channel1,
+                 &buffer, 1, MPI_INT, rank, channel2,
+                 MPI_COMM_WORLD, &status);
+    if (last_number > buffer) {
+        sorted = false;
+        nums[count - 1] = buffer;
+        DEBUG("#%d got=%d\n", world_rank, buffer);
+    }
 }
 
 void _single_phase_sort(int* a, int index, int size)
@@ -55,11 +65,11 @@ int main(int argc, char** argv)
 
         /*** even-phase ***/
         if (!single_process) {
-            if (is_even(world_rank) && is_even(tail) ||
-                is_even(world_rank) && is_odd(head))
+            if ((is_even(world_rank) && is_even(tail)) ||
+                (is_even(world_rank) && is_odd(head)))
                 mpi_send(world_rank + 1, nums, count);
-            if (is_odd(world_rank) && is_odd(head) ||
-                is_odd(world_rank) && is_even(tail))
+            if ((is_odd(world_rank) && is_odd(head)) ||
+                (is_odd(world_rank) && is_even(tail)))
                 mpi_recv(world_rank - 1, nums);
             MPI_Barrier(MPI_COMM_WORLD);
         }
@@ -67,11 +77,11 @@ int main(int argc, char** argv)
 
         /*** odd-phase ***/
         if (!single_process) {
-            if (is_even(world_rank) && is_odd(tail) ||
-                is_odd(world_rank) && is_odd(tail))
+            if ((is_even(world_rank) && is_odd(tail)) ||
+                (is_odd(world_rank) && is_odd(tail)))
                 mpi_send(world_rank + 1, nums, count);
-            if (is_odd(world_rank) && is_even(head) ||
-                is_even(world_rank) && is_even(head))
+            if ((is_odd(world_rank) && is_even(head)) ||
+                (is_even(world_rank) && is_even(head)))
                 mpi_recv(world_rank - 1, nums);
             MPI_Barrier(MPI_COMM_WORLD);
         }
