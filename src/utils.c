@@ -2,11 +2,19 @@
 
 void mpi_init(int argc, char** argv)
 {
-    sscanf(argv[1], "%d", &num);
-
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+}
+
+int mpi_commu_basic(int rank, int* target, int* buffer, int channel)
+{
+    if (world_rank >= world_size || rank >= world_size || rank < 0) return -1;
+    MPI_Status status;
+    MPI_Sendrecv(target, 1, MPI_INT, rank, channel,
+                 buffer, 1, MPI_INT, rank, another(channel),
+                 MPI_COMM_WORLD, &status);
+    return 0;
 }
 
 void mpi_file_operation(int mode, char* filename, int* nums, int* count)
