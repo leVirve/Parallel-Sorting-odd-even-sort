@@ -1,9 +1,10 @@
-*How to use judge.sh for HW1*
+## How to use judge.sh for project
 
 1. Copy /home/pp2015/shared/hw1 to your own directory
-> cd
-> cp -r /home/pp2015/shared/hw1 .
-
+    ```bash
+    > cd
+    > cp -r /home/pp2015/shared/hw1 .
+    ```
 
 2. Rename your source code
     - for basic version
@@ -14,6 +15,7 @@
 
 
 3. Run judge
-> cd ~/hw1    # get into hw1/
-> ./judge.sh
-
+    ```bash
+    > cd ~/hw1
+    > ./TA_judge.sh
+    ```
