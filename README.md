@@ -1,11 +1,26 @@
-#Odd Even Sort
-Implement parallel Odd-Even Sort with MPI.
+# Parallel Odd-Even Sort
+Implement parallel Odd-Even Sort in MPI (`Message Passing Interface` standard) with two approaches.
 
-##Experiment System Spec 
-8 nodes, each has:
-- Intel Xeon CPU L5640 @2.27GHz (2x6 cores)
-- 24 GB memory
-- 2TB HDD Storage
+## Experiment System Spec
+**System:**
+
+MPI supported by:
+- MPICH
+
+**Front node queue:**
+- Resource Manager: TORQUE-5.1.1.2
+- Scheduler: Maui-3.3.1
+
+**Clusters:**
+- 1 + 8 nodes, each has:
+    - Intel Xeon CPU L5640 @2.27GHz (2x6-cores)
+    - 24 GB memory
+    - 2TB HDD Storage
+- 1 + 4 nodes, each has:
+    - Intel Xeon CPU X5670 @2.93GHz (2x6-cores)
+    - 96 GB memory
+    - 2TB HDD Storage
+- Network: connectd by `Infiniband`
 
 ##Difference in two implementations
 ###Basic:
