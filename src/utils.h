@@ -30,9 +30,8 @@
 #define swap(i, j)  int t = i; i = j; j = t;
 
 extern bool sorted;
-extern int world_size, world_rank, subset_size;
+extern int num_procs, rank, size;
 
 void mpi_init(int, char**);
 int mpi_commu_basic(int rank, int* target, int* buffer, int channel);
-void mpi_read_file(char* filename, int* nums, int* count);
-void mpi_write_file(char* filename, int* nums, int* count);
+void mpi_file(char* filename, int* nums, int* count, int mode);
