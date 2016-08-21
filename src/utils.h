@@ -1,6 +1,7 @@
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef _DEBUG
 #define DEBUG(format, args...) printf("[Line:%d] " format, __LINE__, ##args);
@@ -20,6 +21,8 @@
 #define channel2    1
 #define EVEN_PHASE  0
 #define ODD_PHASE   1
+#define LEFT_PHASE  0
+#define RIGHT_PHASE 1
 
 #define READ_FILE   MPI_MODE_RDONLY
 #define WRITE_FILE  MPI_MODE_WRONLY | MPI_MODE_CREATE
@@ -34,4 +37,5 @@ extern int num_procs, rank, size;
 
 void mpi_init(int, char**);
 int mpi_commu_basic(int rank, int* target, int* buffer, int channel);
+int mpi_commu(int proc, int* target, int send_sz, int* buffer, int recv_sz, int channel);
 void mpi_file(char* filename, int* nums, int* count, int mode);

@@ -25,6 +25,19 @@ int mpi_commu_basic(int proc, int* target, int* buffer, int channel)
     return 0;
 }
 
+int mpi_commu(int proc, int* target, int send_sz, int* buffer, int recv_sz, int channel)
+{
+    if (rank >= num_procs || proc >= num_procs || proc < 0) return -1;
+    MPI_Status status;
+    MPI_Sendrecv(target, send_sz, MPI_INT, proc, channel,
+                 buffer, recv_sz, MPI_INT, proc, another(channel),
+                 MPI_COMM_WORLD, &status);
+
+    int count;
+    MPI_Get_count(&status, MPI_INT, &count);
+    return count;
+}
+
 void mpi_file(char* filename, int* nums, int* count, int mode)
 {
     MPI_File fh;
