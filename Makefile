@@ -5,7 +5,7 @@ CC = mpicc
 #uuid := $(shell uuidgen)
 #TARGET = judge_HW1_$(uuid)_101062337
 #REPORT = judge_sh_out.*
-OUTPUT = judge_* *.o *.rpt *basic *advanced
+OUTPUT = judge_* *.o *.rpt *basic *advanced measure_*
 
 all: clean basic submit watch
 
@@ -20,9 +20,9 @@ advanced:
 	$(eval TARGET := $(TARGET)_advanced)
 	$(CC) -o $(TARGET) src/advanced.c src/utils.c $(CFLAGS) $(LOGFLAGS)
 
-iotest:
-	$(eval TARGET := $(TARGET)_basic)
-	$(CC) -o $(TARGET) src/test_io.c $(CFLAGS) $(LOGFLAGS)
+measure:
+	$(CC) -o measure_io src/measurements/measure_io.c -std=gnu11 -O3 -Wno-unused-result $(flag)
+	$(CC) -o measure_basic src/measurements/measure_basic.cpp -std=c++11 -O3 -Wno-unused-result $(flag)
 
 submit:
 	qsub -v exe=$(TARGET) testcase/submit$(i).sh

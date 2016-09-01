@@ -5,15 +5,14 @@
 using namespace std;
 
 int file_size, *a;
-
-long io_time = 0, comp_time = 0, comm_time = 0;
+long io_time = 0, compute_time = 0, commute_time = 0;
 struct timespec s, e;
 
 void calc_time(long* target, struct timespec a, struct timespec b)
 {
     int sec = a.tv_sec - b.tv_sec;
     int nsec = a.tv_nsec - b.tv_nsec;
-    *target += (long)sec * 1000000000 + nsec;
+    *target += ((long) sec) * 1000000000 + nsec;
 }
 
 int cmp(const void* a, const void* b)
@@ -34,11 +33,13 @@ int main(int argc, char const *argv[])
     timeit(&e); calc_time(&io_time, e, s);
     fclose(fp);
 
-    bool sorted = false;
     timeit(&s);
-    // sort(a, a + file_size);
+#ifdef CPP_SORT
+    sort(a, a + file_size);
+#else
     qsort(a, file_size, sizeof(int), cmp);
-    timeit(&e); calc_time(&comp_time, e, s);
+#endif
+    timeit(&e); calc_time(&compute_time, e, s);
 
     FILE* fh = fopen(argv[3], "wb");
     timeit(&s);
@@ -46,6 +47,6 @@ int main(int argc, char const *argv[])
     timeit(&e); calc_time(&io_time, e, s);
     fclose(fh);
 
-    printf("%ld %ld\n", io_time, comp_time);
+    printf("%ld %ld\n", io_time, compute_time);
     return 0;
 }
