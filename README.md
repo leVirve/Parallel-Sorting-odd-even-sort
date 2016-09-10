@@ -22,24 +22,33 @@ MPI supported by:
     - 2TB HDD Storage
 - Network: connectd by `Infiniband`
 
-##Difference in two implementations
-###Basic:
-Basic version of odd-even sort is strictly limited, and each element can only be swapped with its adjacent elements in each operation.
-In other words, take the entire list of numbers and apply classic odd-even sort directly in parallel.
-###Advanced:
+## Difference in two implementations
+
+### Basic:
+It's strictly limited. Each element can only be swapped with its adjacent elements in each operation. Only one element sent in each message.
+
+### Advanced:
 The only restriction is that each MPI process can only send messages to its neighbor processes. The number of elements sent in each message can also be arbitrary. 
 Advanced version should achieve better performance than basic version.
 
-##Speedup factor of implementations
+## Speedup factor of implementations
 ![](https://github.com/leVirve/OddEvenSort/blob/master/speedup.png)
 
-##Tools
+## Tools
+
+- Sctipt for submitting job through `qsub`
+    - Define your work in `experiment.py` first.
+    - Just execute it and fecth the output without any `*.sh` files!
+```
+./experiment.py
+```
+
 - parse binary integers and print out
 ```
 ./tools/parse_int.py
 ```
 
-- generate experimental shell jobs
+- (not recommend) generate experimental shell jobs
 ```
 ./tools/experiment_gen.py ($testcase_number)
 ```
